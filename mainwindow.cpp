@@ -138,4 +138,5 @@ void MainWindow::scanFinished()
 {
     updateAction("Scan complete.");
     appendLog("Scan complete.");
+    worker = nullptr;  // Prevent further calls on a deleted worker
 }

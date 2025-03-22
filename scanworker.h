@@ -2,6 +2,8 @@
 #define SCANWORKER_H
 
 #include <QObject>
+#include <QMutex>
+#include <QWaitCondition>
 
 class ScanWorker : public QObject {
     Q_OBJECT
@@ -20,6 +22,8 @@ signals:
 private:
     bool isPaused;
     bool isStopped;
+    QMutex m_mutex;
+    QWaitCondition m_pauseCondition;
 };
 
 #endif // SCANWORKER_H

@@ -27,8 +27,12 @@ void ScanWorker::doScan() {
             emit actionUpdated("Scan stopped.");
             break;
         }
-        while (isPaused && !isStopped) {
-            QThread::msleep(100);
+        // Pause handling using mutex & condition.
+        {
+            QMutexLocker locker(&m_mutex);
+            while (isPaused && !isStopped) {
+                m_pauseCondition.wait(&m_mutex);
+            }
         }
         int progress = ((i + 1) * 100) / count;
         emit progressUpdated(progress);
@@ -50,14 +54,19 @@ void ScanWorker::doScan() {
 }
 
 void ScanWorker::pauseScan() {
+    QMutexLocker locker(&m_mutex);
     isPaused = true;
 }
 
 void ScanWorker::resumeScan() {
+    QMutexLocker locker(&m_mutex);
     isPaused = false;
+    m_pauseCondition.wakeAll();
 }
 
 void ScanWorker::stopScan() {
+    QMutexLocker locker(&m_mutex);
     isStopped = true;
     isPaused = false;
+    m_pauseCondition.wakeAll();
 }
