@@ -39,6 +39,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     setCentralWidget(centralWidget);
     setWindowTitle("Antivirus GUI");
+    resize(1024, 768); // Set default window size to 1024x768
 
     // Connect button signals.
     connect(startButton, &QPushButton::clicked, this, &MainWindow::on_startButton_clicked);
