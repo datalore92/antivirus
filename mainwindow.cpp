@@ -129,9 +129,14 @@ void MainWindow::updateAction(const QString &action)
 
 void MainWindow::appendLog(const QString &msg)
 {
-    if(fileLog) {
-        fileLog->append(msg);
-    }
+    QString formattedMsg = msg;
+    if (msg.startsWith("Scanned:"))
+        formattedMsg = QString("<font color=\"green\">%1 (safe)</font>").arg(msg);
+    else if (msg.startsWith("Potential:"))
+        formattedMsg = QString("<font color=\"yellow\">%1 (potentially harmful)</font>").arg(msg);
+    else if (msg.startsWith("Hit file:"))
+        formattedMsg = QString("<font color=\"red\">%1 (unsafe)</font>").arg(msg);
+    fileLog->append(formattedMsg);
 }
 
 void MainWindow::scanFinished()
