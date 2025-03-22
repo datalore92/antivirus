@@ -8,14 +8,14 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     scanworker.cpp \
-    signature.c
-    # scanner.c  <-- removed if not used
+    engine/signature.c \
+    engine/scanner.c
 
 HEADERS += \
     mainwindow.h \
     scanworker.h \
-    signature.h
-    # scanner.h  <-- remove, if not used
+    engine/signature.h \
+    engine/scanner.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

@@ -2,7 +2,7 @@
 #include <QThread>
 #include <QStringList>
 #include <QDirIterator>
-#include "signature.h"  // to check file signature, if needed
+#include "engine/signature.h"  // Modified include path to the engine module
 #include <string>
 
 ScanWorker::ScanWorker(QObject *parent) 

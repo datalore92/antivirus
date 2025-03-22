@@ -1,3 +1,4 @@
+// scanner.c (moved to engine folder)
 #include "scanner.h"
 #include "signature.h"
 #include <windows.h>
