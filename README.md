@@ -1,6 +1,6 @@
 # Simple Antivirus Scanner
 
-A basic antivirus scanner built with Qt that can scan files for malicious signatures.
+A basic antivirus scanner built with Qt that can scan files for malicious signatures and perform real-time malware detection using the abuse.ch API.
 
 ## Features
 
@@ -8,7 +8,7 @@ A basic antivirus scanner built with Qt that can scan files for malicious signat
 - Pause/Resume functionality
 - Progress tracking
 - Real-time scan logging
-- Signature-based detection
+- Real-time malware detection using abuse.ch API and SHA256 hashing
 - Stop and restart capabilities
 
 ## Requirements
@@ -30,25 +30,25 @@ A basic antivirus scanner built with Qt that can scan files for malicious signat
 - `mainwindow.cpp/h` - Main GUI window implementation
 - `scanworker.cpp/h` - Background scanning worker
 - `scanner.c/h` - Core scanning functionality
-- `signature.c/h` - Signature detection implementation
+- `signature.c/h` - Signature detection and malware lookup implementation
 
 ## Usage
 
-1. Launch the application
-2. Click "Start Scan" to begin scanning
-3. Use Pause/Resume to control the scan
-4. Stop button cancels the current scan
-5. Restart button begins a fresh scan
-6. Monitor progress in the status window
+1. Launch the application.
+2. Click "Start Scan" to begin scanning.
+3. Use Pause/Resume to control the scan.
+4. Stop button cancels the current scan.
+5. Restart button begins a fresh scan.
+6. Monitor progress and detailed scan log in the interface.
 
 ## Scan Results
 
 The application will display:
 - Current file being scanned
 - Overall scan progress
-- Any detected signature matches
+- Any detected malware matches based on file SHA256 hash and abuse.ch API lookup
 - Complete scan log
 
 ## Security Note
 
-This is a basic implementation and should not be used as a primary antivirus solution. It demonstrates the fundamental concepts of antivirus scanning but lacks advanced detection methods and real-time protection features.
+This implementation now performs real-time malware detection by comparing file SHA256 hashes against the abuse.ch database. Although more robust than a simple signature check, further enhancements and security reviews are advised before deployment in production environments.

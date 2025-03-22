@@ -17,6 +17,8 @@ HEADERS += \
     engine/signature.h \
     engine/scanner.h
 
+LIBS += -lwinhttp
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

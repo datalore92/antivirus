@@ -10,6 +10,9 @@ extern "C" {
 // Returns non-zero if the file contains the signature.
 int containsSignature(const wchar_t *filePath, const char *signature);
 
+// Returns non-zero if the file is identified as malware using the abuse.ch API.
+int isMalware(const wchar_t *filePath, const char *apiKey);
+
 #ifdef __cplusplus
 }
 #endif

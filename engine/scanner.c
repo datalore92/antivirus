@@ -35,7 +35,7 @@ long countEntries(const wchar_t *directory, HANDLE hStopEvent) {
 }
 
 // Updated scanDirectory uses global counters for progress.
-void scanDirectory(const wchar_t *directory, const char *signature, HWND hwnd, HANDLE hStopEvent, HANDLE hPauseEvent) {
+void scanDirectory(const wchar_t *directory, const char *apiKey, HWND hwnd, HANDLE hStopEvent, HANDLE hPauseEvent) {
     wchar_t searchPath[MAX_PATH];
     swprintf(searchPath, MAX_PATH, L"%s\\*", directory);
     WIN32_FIND_DATAW findData;
@@ -73,9 +73,9 @@ void scanDirectory(const wchar_t *directory, const char *signature, HWND hwnd, H
         PostMessageW(hwnd, WM_APP + 2, 0, (LPARAM)statusMsg);
         
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            scanDirectory(fullPath, signature, hwnd, hStopEvent, hPauseEvent);
+            scanDirectory(fullPath, apiKey, hwnd, hStopEvent, hPauseEvent);
         } else {
-            if (containsSignature(fullPath, signature)) {
+            if (isMalware(fullPath, apiKey)) {
                 wchar_t hitBuffer[MAX_PATH + 25];
                 swprintf(hitBuffer, MAX_PATH + 25, L"Hit file: %s", fullPath);
                 wchar_t *hitMsg = _wcsdup(hitBuffer);

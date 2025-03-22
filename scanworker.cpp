@@ -22,6 +22,9 @@ void ScanWorker::doScan() {
     }
 
     int count = fileList.size();
+    // Define your API key (replace YOUR_API_KEY with your actual key)
+    const char *apiKey = "b5f8561beb773ff96f7b4ae9122110f2733611fe691e086c";
+
     for (int i = 0; i < count; i++) {
         if (isStopped) {
             emit actionUpdated("Scan stopped.");
@@ -40,10 +43,10 @@ void ScanWorker::doScan() {
         emit actionUpdated(QString("Scanning: %1").arg(currentFile));
 
         // Optional: Use signature check.
-        // Convert QString to std::wstring for containsSignature.
+        // Convert QString to std::wstring for isMalware.
         std::wstring wFile(currentFile.toStdWString());
         // Replace "malware" with your actual signature string.
-        if(containsSignature(wFile.c_str(), "malware")) {
+        if (isMalware(wFile.c_str(), apiKey)) {
             emit logMessage(QString("Hit file: %1").arg(currentFile));
         } else {
             emit logMessage(QString("Scanned: %1").arg(currentFile));
