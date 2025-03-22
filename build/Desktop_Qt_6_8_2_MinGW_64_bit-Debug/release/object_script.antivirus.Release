@@ -1,0 +1,13 @@
+release/main.o
+release/mainwindow.o
+release/scanworker.o
+release/signature.o
+release/scanner.o
+release/.o
+release/(if.o
+release/you.o
+release/use.o
+release/scanner.o
+release/functions).o
+release/moc_mainwindow.o
+release/moc_scanworker.o

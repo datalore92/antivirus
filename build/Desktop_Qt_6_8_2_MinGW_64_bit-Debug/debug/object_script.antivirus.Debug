@@ -1,0 +1,13 @@
+debug/main.o
+debug/mainwindow.o
+debug/scanworker.o
+debug/signature.o
+debug/scanner.o
+debug/.o
+debug/(if.o
+debug/you.o
+debug/use.o
+debug/scanner.o
+debug/functions).o
+debug/moc_mainwindow.o
+debug/moc_scanworker.o
