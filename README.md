@@ -41,6 +41,11 @@ A basic antivirus scanner built with Qt that can scan files for malicious signat
 5. Restart button begins a fresh scan.
 6. Monitor progress and detailed scan log in the interface.
 
+## Changelog
+- Updated documentation to reflect real-time malware detection with abuse.ch API.
+- Improved SHA256 hash computation and enhanced API logging.
+- Added pause, stop, and restart functionality details.
+
 ## Scan Results
 
 The application will display:

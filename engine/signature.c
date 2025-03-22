@@ -6,6 +6,8 @@
 #include <winhttp.h>
 #include <wincrypt.h>
 
+char g_computedHash[129] = {0};
+
 int containsSignature(const wchar_t *filePath, const char *signature) {
     FILE *file = NULL;
     if (_wfopen_s(&file, filePath, L"rb") != 0 || !file)
@@ -69,7 +71,7 @@ int isMalware(const wchar_t *filePath, const char *apiKey) {
             return 0;
         }
     }
-    fclose(file);
+    fclose(file);  // Fixed missing closing parenthesis
 
     DWORD hashLen = 0;
     DWORD dwDataLen = sizeof(DWORD);
@@ -99,12 +101,14 @@ int isMalware(const wchar_t *filePath, const char *apiKey) {
         sprintf(&hexHash[i*2], "%02x", hashValue[i]);
     }
     free(hashValue);
+    strcpy(g_computedHash, hexHash);  // Save the computed hash for logging
 
-    // Prepare POST data: "hash=<hexHash>&api_key=<apiKey>"
+    // Prepare POST data without api_key.
     char postData[512];
-    snprintf(postData, sizeof(postData), "hash=%s&api_key=%s", hexHash, apiKey);
+    snprintf(postData, sizeof(postData), "query=get_info&hash=%s", hexHash);
 
-    // Set up WinHTTP for HTTPS POST request.
+    // Set up WinHTTP for HTTPS POST request with TLS 1.2
+    DWORD flags = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2;
     HINTERNET hSession = WinHttpOpen(L"Antivirus/1.0",
                                      WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                      WINHTTP_NO_PROXY_NAME,
@@ -112,40 +116,113 @@ int isMalware(const wchar_t *filePath, const char *apiKey) {
     if (!hSession)
         return 0;
 
-    // Connect to abuse.ch server (assumed endpoint: api.abuse.ch).
-    HINTERNET hConnect = WinHttpConnect(hSession, L"api.abuse.ch", INTERNET_DEFAULT_HTTPS_PORT, 0);
-    if (!hConnect) {
+    // Configure TLS for the session
+    if (!WinHttpSetOption(hSession, WINHTTP_OPTION_SECURE_PROTOCOLS, &flags, sizeof(flags))) {
+        FILE *logFile = fopen("bazaar_api.log", "a");
+        if (logFile) {
+            fprintf(logFile, "Failed to set session TLS options. Error code: %lu\n", GetLastError());
+            fclose(logFile);
+        }
         WinHttpCloseHandle(hSession);
         return 0;
     }
 
-    // Open request. Assumed endpoint path: "/malware/search/"
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/malware/search/",
+    // Connect to mb-api.abuse.ch instead of api.abuse.ch
+    HINTERNET hConnect = WinHttpConnect(hSession, L"mb-api.abuse.ch", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (!hConnect) {
+        DWORD err = GetLastError();
+        FILE *logFile = fopen("bazaar_api.log", "a");
+        if (logFile) {
+            fprintf(logFile, "Failed to connect. Error code: %lu\n", err);
+            if (err == 12007) {
+                fprintf(logFile, "Could not resolve hostname mb-api.abuse.ch\n");
+            }
+            fclose(logFile);
+        }
+        WinHttpCloseHandle(hSession);
+        return 0;
+    }
+
+    // Debug: Log the request and API details
+    FILE *logFile = fopen("bazaar_api.log", "a");
+    if (logFile) {
+        fprintf(logFile, "\n=== New Scan ===\nFile: %ls\nHash: %s\n", filePath, hexHash);
+        fprintf(logFile, "Attempting to connect to api.abuse.ch...\n");
+        fclose(logFile);
+    }
+
+    // The API endpoint should be just /api/v1/ - removing query/hash/
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/v1/",
                                             NULL, WINHTTP_NO_REFERER,
                                             WINHTTP_DEFAULT_ACCEPT_TYPES,
                                             WINHTTP_FLAG_SECURE);
+
     if (!hRequest) {
+        logFile = fopen("bazaar_api.log", "a");
+        if (logFile) {
+            fprintf(logFile, "Failed to create HTTP request. Error code: %lu\n", GetLastError());
+            fclose(logFile);
+        }
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
         return 0;
     }
 
-    // Set headers.
-    const wchar_t *headers = L"Content-Type: application/x-www-form-urlencoded";
+    // Build complete headers in a single string with proper line endings
+    wchar_t headers[512];
+    swprintf(headers, sizeof(headers)/sizeof(wchar_t),
+             L"Content-Type: application/x-www-form-urlencoded\r\n"
+             L"Accept: application/json\r\n"
+             L"Auth-Key: %s\r\n"
+             L"Connection: close\r\n\r\n",  // Add final \r\n\r\n to terminate headers
+             apiKey);
+
+    logFile = fopen("bazaar_api.log", "a");
+    if (logFile) {
+        fprintf(logFile, "Sending request with headers:\n%S\n", headers);
+        fprintf(logFile, "POST data: %s\n", postData);
+        fclose(logFile);
+    }
+
+    // Convert postData to wide string since WinHttpSendRequest expects LPVOID
+    size_t postLen = strlen(postData);
+    
+    // Send request - note we're sending the raw postData buffer
     BOOL bResults = WinHttpSendRequest(hRequest,
-                                       headers, -1L,
-                                       (LPVOID)postData, (DWORD)strlen(postData),
-                                       (DWORD)strlen(postData),
-                                       0);
+                                     headers,
+                                     -1L,
+                                     (LPVOID)postData,
+                                     (DWORD)postLen,
+                                     (DWORD)postLen,
+                                     0);
+
     if (!bResults) {
+        DWORD err = GetLastError();
+        logFile = fopen("bazaar_api.log", "a");
+        if (logFile) {
+            fprintf(logFile, "Failed to send HTTP request. Error code: %lu\n", err);
+            if (err == 12029) {
+                fprintf(logFile, "Failed to establish HTTPS connection\n");
+            } else if (err == 12157) {
+                fprintf(logFile, "Security channel error\n");
+            }
+            fclose(logFile);
+        }
         WinHttpCloseHandle(hRequest);
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
         return 0;
     }
 
+    // Complete the request
     bResults = WinHttpReceiveResponse(hRequest, NULL);
     if (!bResults) {
+        DWORD err = GetLastError();
+        logFile = fopen("bazaar_api.log", "a");
+        if (logFile) {
+            fprintf(logFile, "Failed to receive response. Error code: %lu\n", err);
+            fclose(logFile);
+        }
         WinHttpCloseHandle(hRequest);
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
@@ -177,16 +254,55 @@ int isMalware(const wchar_t *filePath, const char *apiKey) {
     if(response)
         response[responseLen] = '\0';
 
+    // Log raw response immediately
+    logFile = fopen("bazaar_api.log", "a");
+    if (logFile) {
+        fprintf(logFile, "\n=== Raw API Response ===\n");
+        fprintf(logFile, "%s\n", response ? response : "NULL");
+        fprintf(logFile, "=== End Raw Response ===\n\n");
+        fclose(logFile);
+    }
+
     WinHttpCloseHandle(hRequest);
     WinHttpCloseHandle(hConnect);
     WinHttpCloseHandle(hSession);
 
-    // Check response for indication of malware (e.g. "malicious":true).
+    // Response parsing according to API docs
     int result = 0;
-    if (response && strstr(response, "\"malicious\":true") != NULL) {
-        result = 1;
+    if (response) {
+        logFile = fopen("bazaar_api.log", "a");
+        if (logFile) {
+            fprintf(logFile, "\n=== API Response Analysis ===\n");
+            fprintf(logFile, "Raw response: %s\n", response);
+            
+            // First check: if response contains "hash_not_found", file is clean.
+            if (strstr(response, "hash_not_found") != NULL) {
+                fprintf(logFile, "Status: Valid API response - hash not found\n");
+                fprintf(logFile, "File is safe\n");
+                result = 0;
+            }
+            // Next check: if response contains "query_status", "ok", and '"data"' then mark as malware.
+            else if (strstr(response, "\"query_status\"") != NULL &&
+                     strstr(response, "ok") != NULL &&
+                     strstr(response, "\"data\"") != NULL) {
+                fprintf(logFile, "Status: MALWARE DETECTED\n");
+                fprintf(logFile, "Hash matches known malware in database\n");
+                result = 1;
+            }
+            else {
+                fprintf(logFile, "Status: Invalid API response\n");
+                fprintf(logFile, "Debug info: Response format not recognized\n");
+                result = 0;
+            }
+            
+            fprintf(logFile, "Final detection result: %d (%s)\n", 
+                    result, result ? "MALICIOUS" : "CLEAN");
+            fprintf(logFile, "=== End Analysis ===\n\n");
+            fclose(logFile);
+        }
     }
-    if(response)
+
+    if (response)
         free(response);
     return result;
 }

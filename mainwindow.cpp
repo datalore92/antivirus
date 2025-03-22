@@ -126,6 +126,8 @@ void MainWindow::updateAction(const QString &action)
 {
     if(actionLabel)
         actionLabel->setText("Action: " + action);
+    // Merge action updates into the log display:
+    appendLog("Action: " + action);
 }
 
 void MainWindow::appendLog(const QString &msg)

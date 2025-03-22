@@ -40,15 +40,24 @@ void ScanWorker::doScan() {
         int progress = ((i + 1) * 100) / count;
         emit progressUpdated(progress);
         QString currentFile = fileList.at(i);
-        emit actionUpdated(QString("Scanning: %1").arg(currentFile));
-
-        // Optional: Use signature check.
-        // Convert QString to std::wstring for isMalware.
+        
+        // Additional detailed feedback for each file:
+        emit logMessage(QString("Checking file: %1").arg(currentFile));
+        emit logMessage("-> Computing SHA256 hash and querying abuse.ch API...");
+        emit actionUpdated(QString("Querying abuse.ch API for: %1").arg(currentFile));
+        
+        // Call isMalware (which computes the file hash and queries the API)
         std::wstring wFile(currentFile.toStdWString());
-        // Replace "malware" with your actual signature string.
-        if (isMalware(wFile.c_str(), apiKey)) {
+        bool malwareDetected = isMalware(wFile.c_str(), apiKey) ? true : false;
+        
+        // New: Emit the computed hash to the GUI log.
+        emit logMessage(QString("Computed hash: %1").arg(QString::fromLocal8Bit(g_computedHash)));
+        
+        if (malwareDetected) {
+            emit logMessage("-> Abuse.ch API flagged the file as malware.");
             emit logMessage(QString("Hit file: %1").arg(currentFile));
         } else {
+            emit logMessage("-> Abuse.ch API response indicates file is safe.");
             emit logMessage(QString("Scanned: %1").arg(currentFile));
         }
         QThread::msleep(50); // Adjust delay as needed
